@@ -1,0 +1,23 @@
+[project]
+name = "decisionengine"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "BenjaminAlejandroZepeda",email = "ben.zepeda@duocuc.cl"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+]
+
+[tool.poetry]
+packages = [{include = "decisionengine", from = "src"}]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

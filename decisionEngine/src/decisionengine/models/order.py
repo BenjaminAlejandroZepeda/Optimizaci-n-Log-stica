@@ -22,3 +22,8 @@ class Order:
     origin: Location
     destination: Location
 
+
+    def __post_init__(self):
+        if self.weight_kg <= 0:
+            raise ValueError("Order peso no puede ser negativo")
+

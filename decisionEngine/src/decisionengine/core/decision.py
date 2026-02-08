@@ -7,6 +7,10 @@ from decisionengine.models.vehicle import Vehicle
 from decisionengine.models.route import Route
 from decisionengine.models.location import Location
 from decisionengine.models.decision_result import DecisionResult
+from decisionengine.core.scoring import ScoringInput, score_decision
+from decisionengine.models.decision_debug import DecisionDebugInfo
+
+
 
 DEFAULT_SPEED_KMH = 40.0  # velocidad urbana promedio
 
@@ -60,19 +64,17 @@ class DecisionService:
         graph: Graph,
     ) -> DecisionResult:
 
-        candidates: List[DecisionResult] = []
+        candidates: list[tuple[float, DecisionResult]] = []
+
 
         for vehicle in vehicles:
-            if not vehicle.is_available:
-                continue
-
-            if vehicle.capacity_kg < order.weight_kg:
-                continue
-
-            if vehicle.vehicle_type != order.required_vehicle_type:
-                continue
-
-            
+        
+            debug = DecisionDebugInfo(
+                vehicle_id=vehicle.id,
+                discarded=False,
+                reasons=[],
+                metrics={},
+            )
 
             # Ruta: vehículo → origen pedido
             if vehicle.current_location == order.origin:
@@ -92,6 +94,16 @@ class DecisionService:
                 access_distance = route_to_origin.distance_km
                 access_time = route_to_origin.estimated_travel_time_min
 
+                debug.metrics.update({
+                    "access_distance_km": access_distance,
+                    "access_time_min": access_time,
+                })
+
+                if access_time > order.max_wait_time:
+                    debug.discarded = True
+                    debug.reasons.append("max_wait_time_exceeded")
+                    debug.metrics["max_wait_time_min"] = order.max_wait_time
+                    continue
 
 
             # Ruta: origen → destino pedido
@@ -119,7 +131,22 @@ class DecisionService:
             full_path = full_path + delivery_route.path[1:]
 
 
-            score = total_distance  # scoring simple inicial
+            debug.metrics.update({
+            "total_distance_km": total_distance,
+            "estimated_travel_time_min": estimated_travel_time_min,
+            })
+
+
+            scoring_input = ScoringInput(
+            total_distance_km=total_distance,
+            total_time_min=estimated_travel_time_min,
+            wait_time_min=access_time,
+            priority=order.priority,
+        )
+
+            score = score_decision(scoring_input)
+            debug.metrics["score"] = score
+
 
             full_route = Route(
                 origin=vehicle.current_location,
@@ -134,15 +161,16 @@ class DecisionService:
             )
 
 
-            candidates.append(
-                DecisionResult(
-                    vehicle=vehicle,
-                    route=full_route,
-                    score=score,
-                )
+            decision_result = DecisionResult(
+                vehicle=vehicle,
+                route=full_route,
+                score=score,
+                debug=debug,
             )
+
+            candidates.append((score, decision_result))
 
         if not candidates:
             raise ValueError("No suitable vehicle found for order")
 
-        return min(candidates, key=lambda r: r.score)
+        return min(candidates, key=lambda c: c[0])[1]

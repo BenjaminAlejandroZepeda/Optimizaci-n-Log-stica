@@ -11,4 +11,4 @@ class Priority(str, Enum):
     LOW = "low"
     STANDARD = "standard"
     HIGH = "high"
-    CRITICAL = "critical"
+    URGENT = "critical"

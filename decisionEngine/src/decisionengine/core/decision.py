@@ -11,9 +11,7 @@ from decisionengine.core.scoring import ScoringInput, score_decision
 from decisionengine.models.decision_debug import DecisionDebugInfo
 
 
-
 DEFAULT_SPEED_KMH = 40.0  # velocidad urbana promedio
-
 
 def build_route(
     path: list[Location],
@@ -174,3 +172,4 @@ class DecisionService:
             raise ValueError("No suitable vehicle found for order")
 
         return min(candidates, key=lambda c: c[0])[1]
+

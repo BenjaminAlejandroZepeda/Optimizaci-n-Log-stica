@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 from pydantic import BaseModel
 
-from decisionEngine.src.decisionengine.api.v1.schemas.common import LocationSchema
+from decisionengine.api.v1.schemas.common import LocationSchema
 
 
 class RouteSchema(BaseModel):

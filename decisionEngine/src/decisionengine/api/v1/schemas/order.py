@@ -1,5 +1,5 @@
 
-from decisionEngine.src.decisionengine.api.v1.schemas.common import LocationSchema
+from decisionengine.api.v1.schemas.common import LocationSchema
 from pydantic import BaseModel
 
 class OrderCreateSchema(BaseModel):

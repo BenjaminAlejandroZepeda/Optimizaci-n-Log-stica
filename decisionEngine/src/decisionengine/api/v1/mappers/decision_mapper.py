@@ -1,8 +1,5 @@
 from decisionengine.models.decision_result import DecisionResult
-from decisionengine.api.v1.schemas.decision import (
-    DecisionResultSchema,
-    DecisionCandidateSchema,
-)
+from decisionengine.api.v1.schemas.decision import DecisionResultSchema
 from decisionengine.api.v1.schemas.debug import DecisionDebugInfoSchema
 from .vehicle_mapper import VehicleMapper
 from .route_mapper import RouteMapper
@@ -17,7 +14,7 @@ class DecisionMapper:
         debug: bool = False,
     ) -> DecisionResultSchema:
 
-        candidate = DecisionCandidateSchema(
+        return DecisionResultSchema(
             vehicle=VehicleMapper.to_schema(decision.vehicle),
             route=RouteMapper.to_schema(decision.route),
             score=decision.score,
@@ -31,9 +28,4 @@ class DecisionMapper:
                 if debug and decision.debug
                 else None
             ),
-        )
-
-        return DecisionResultSchema(
-            selected=candidate,
-            candidates=[],  
         )

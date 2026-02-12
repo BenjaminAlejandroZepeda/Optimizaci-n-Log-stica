@@ -7,9 +7,7 @@ from decisionengine.models.vehicle import Vehicle
 from decisionengine.models.enums import VehicleType
 
 
-
 _graph: Graph | None = None
-
 
 def get_graph() -> Graph:
     global _graph
@@ -20,9 +18,12 @@ def get_graph() -> Graph:
         a = Location(0, 0)
         b = Location(0, 1)
         c = Location(0, 2)
+        d = Location(1, 1) 
 
         graph.add_edge(a, b, 5)
         graph.add_edge(b, c, 3)
+        graph.add_edge(a, d, 7)   
+        graph.add_edge(d, a, 7)  
 
         _graph = graph
 
@@ -39,32 +40,29 @@ def get_heuristic():
     return zero_heuristic
 
 
-
 def get_decision_service(
     heuristic=Depends(get_heuristic),
 ) -> DecisionService:
     return DecisionService(heuristic=heuristic)
 
 
-
 def get_vehicles() -> list[Vehicle]:
     return [
         Vehicle(
             id=1,
-            vehicle_type=VehicleType.BIKE,
-            capacity_kg=10,
-            current_location=Location(0, 1),
+            vehicle_type=VehicleType.BIKE,   
+            capacity_kg=20,                
+            current_location=Location(0, 0),
             is_available=True,
         ),
         Vehicle(
             id=2,
             vehicle_type=VehicleType.BIKE,
             capacity_kg=10,
-            current_location=Location(0, 0),
+            current_location=Location(0, 1),
             is_available=True,
         ),
     ]
-
 
 
 def get_decision_context(

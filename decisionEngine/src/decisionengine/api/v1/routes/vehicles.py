@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from decisionengine.api.v1.schemas.vehicle import VehicleSchema
-from decisionengine.api.v1.dependencies import get_vehicles
+from decisionengine.dependencies import get_vehicles
 from decisionengine.api.v1.mappers.vehicle_mapper import VehicleMapper
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])

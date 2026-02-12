@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from decisionengine.core.decision import DecisionService
 from decisionengine.core.graph import Graph
 from decisionengine.models.location import Location
@@ -19,7 +21,7 @@ def test_assign_order_selects_best_vehicle():
         id=1,
         weight_kg=5,
         required_vehicle_type=VehicleType.BIKE,
-        max_wait_time=60,
+        max_wait_time=timedelta(minutes=60),  
         priority=Priority.STANDARD,
         origin=b,
         destination=c,

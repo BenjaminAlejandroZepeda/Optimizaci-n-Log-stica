@@ -11,6 +11,7 @@ from decisionengine.core.scoring import ScoringInput, score_decision
 from decisionengine.models.decision_debug import DecisionDebugInfo
 
 
+
 DEFAULT_SPEED_KMH = 40.0  # velocidad urbana promedio
 
 def build_route(
@@ -66,6 +67,14 @@ class DecisionService:
 
 
         for vehicle in vehicles:
+
+            # Validar tipo de vehículo
+            if vehicle.vehicle_type != order.required_vehicle_type:
+                continue
+
+            # Validar capacidad
+            if vehicle.capacity_kg < order.weight_kg:
+                continue
         
             debug = DecisionDebugInfo(
                 vehicle_id=vehicle.id,
@@ -97,10 +106,10 @@ class DecisionService:
                     "access_time_min": access_time,
                 })
 
-                if access_time > order.max_wait_time:
+                if access_time > order.max_wait_time.total_seconds() / 60:
                     debug.discarded = True
                     debug.reasons.append("max_wait_time_exceeded")
-                    debug.metrics["max_wait_time_min"] = order.max_wait_time
+                    debug.metrics["max_wait_time_min"] = order.max_wait_time.total_seconds() / 60
                     continue
 
 
@@ -136,11 +145,11 @@ class DecisionService:
 
 
             scoring_input = ScoringInput(
-            total_distance_km=total_distance,
-            total_time_min=estimated_travel_time_min,
-            wait_time_min=access_time,
-            priority=order.priority,
-        )
+                total_distance_km=total_distance,
+                total_time_min=estimated_travel_time_min,
+                wait_time_min=access_time,
+                priority=order.priority,
+            )
 
             score = score_decision(scoring_input)
             debug.metrics["score"] = score
@@ -172,4 +181,31 @@ class DecisionService:
             raise ValueError("No suitable vehicle found for order")
 
         return min(candidates, key=lambda c: c[0])[1]
+
+
+
+    def preview_order_decision(
+        self,
+        order,
+        vehicles,
+        graph,
+    ):
+        results = []
+
+        for vehicle in vehicles:
+            try:
+                decision = self.assign_order(
+                    order=order,
+                    vehicles=[vehicle],  
+                    graph=graph,
+                )
+                results.append(decision)
+            except Exception:
+                continue
+
+        results.sort(key=lambda d: d.score)
+        return results
+
+
+
 

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from decisionengine.api.v1.schemas.order import OrderCreateSchema
 from decisionengine.api.v1.schemas.decision import DecisionResultSchema
 from decisionengine.api.v1.schemas.common import ErrorResponse
-from decisionengine.api.v1.dependencies import get_decision_context
+from decisionengine.dependencies import get_decision_context
 from decisionengine.api.v1.mappers.order_mapper import OrderMapper
 from decisionengine.api.v1.mappers.decision_mapper import DecisionMapper
 
@@ -30,6 +30,9 @@ def assign_decision(
             vehicles=vehicles,
             graph=graph,
         )
+
+        if decision is None:
+            raise ValueError("No available vehicle found")
 
         return DecisionMapper.to_schema(decision, debug=debug)
 

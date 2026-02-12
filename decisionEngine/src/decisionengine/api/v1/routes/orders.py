@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from decisionengine.api.v1.schemas.order import OrderCreateSchema
 from decisionengine.api.v1.schemas.common import ErrorResponse
-from decisionengine.api.v1.dependencies import get_decision_context
+from decisionengine.dependencies import get_decision_context
 from decisionengine.api.v1.mappers.order_mapper import OrderMapper
 
 router = APIRouter(prefix="/orders", tags=["orders"])

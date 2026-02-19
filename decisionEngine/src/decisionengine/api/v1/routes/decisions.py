@@ -20,10 +20,12 @@ def assign_decision(
     debug: bool = Query(False),
     context=Depends(get_decision_context),
 ):
-    service, graph, vehicles = context
+    service, graph, vehicle_repository = context
 
     try:
         domain_order = OrderMapper.from_schema(order)
+
+        vehicles = vehicle_repository.get_available_vehicles()
 
         decision = service.assign_order(
             order=domain_order,
@@ -53,10 +55,12 @@ def preview_decision(
     debug: bool = Query(False),
     context=Depends(get_decision_context),
 ):
-    service, graph, vehicles = context
+    service, graph, vehicle_repository = context
 
     try:
         domain_order = OrderMapper.from_schema(order)
+
+        vehicles = vehicle_repository.get_available_vehicles()
 
         decisions = service.preview_order_decision(
             order=domain_order,

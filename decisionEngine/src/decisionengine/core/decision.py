@@ -1,31 +1,38 @@
+from __future__ import annotations
 from typing import Callable, List
 
 from decisionengine.core.astar import astar
 from decisionengine.core.graph import Graph
+from decisionengine.core.vehicle_repository import VehicleRepository
 from decisionengine.models.order import Order
 from decisionengine.models.vehicle import Vehicle
 from decisionengine.models.route import Route
 from decisionengine.models.location import Location
 from decisionengine.models.decision_result import DecisionResult
-from decisionengine.core.scoring import ScoringInput, score_decision
 from decisionengine.models.decision_debug import DecisionDebugInfo
+from decisionengine.core.scoring import ScoringInput, score_decision
+from decisionengine.core.exceptions import (
+    NoVehicleAvailableError,
+    RouteNotFoundError,
+)
 
+DEFAULT_SPEED_KMH = 40.0
 
-
-DEFAULT_SPEED_KMH = 40.0  # velocidad urbana promedio
 
 def build_route(
     path: list[Location],
     graph: Graph,
     speed_kmh: float = DEFAULT_SPEED_KMH,
 ) -> Route:
-    if len(path) < 2:
+
+
+    if not path or len(path) < 2:
         raise ValueError("Route path must contain at least two locations")
 
-    total_distance = 0.0
-
-    for i in range(len(path) - 1):
-        total_distance += graph.cost(path[i], path[i + 1])
+    total_distance = sum(
+        graph.cost(path[i], path[i + 1])
+        for i in range(len(path) - 1)
+    )
 
     travel_time_min = (total_distance / speed_kmh) * 60
 
@@ -43,169 +50,182 @@ def build_route(
     )
 
 
-
-def default_heuristic(a: Location, b: Location) -> float:
-    return 0.0
-
-
 class DecisionService:
 
+    
     def __init__(
         self,
-        heuristic: Callable[[Location, Location], float] = default_heuristic,
+        vehicle_repository: VehicleRepository | None = None,
+        heuristic: Callable | None = None,
     ):
-        self.heuristic = heuristic
+        self._vehicle_repository = vehicle_repository
+        self._heuristic = heuristic or (lambda a, b: 0.0)
 
     def assign_order(
         self,
         order: Order,
-        vehicles: List[Vehicle],
         graph: Graph,
+        vehicles: list[Vehicle] | None = None,
     ) -> DecisionResult:
 
-        candidates: list[tuple[float, DecisionResult]] = []
-
-
-        for vehicle in vehicles:
-
-            # Validar tipo de vehículo
-            if vehicle.vehicle_type != order.required_vehicle_type:
-                continue
-
-            # Validar capacidad
-            if vehicle.capacity_kg < order.weight_kg:
-                continue
-        
-            debug = DecisionDebugInfo(
-                vehicle_id=vehicle.id,
-                discarded=False,
-                reasons=[],
-                metrics={},
-            )
-
-            # Ruta: vehículo → origen pedido
-            if vehicle.current_location == order.origin:
-                route_to_origin = None
-                access_distance = 0.0
-                access_time = 0.0
-                path_to_origin = [order.origin]
-            else:
-                path_to_origin = astar(
-                    graph,
-                    vehicle.current_location,
-                    order.origin,
-                    self.heuristic,
-                )
-
-                route_to_origin = build_route(path_to_origin, graph)
-                access_distance = route_to_origin.distance_km
-                access_time = route_to_origin.estimated_travel_time_min
-
-                debug.metrics.update({
-                    "access_distance_km": access_distance,
-                    "access_time_min": access_time,
-                })
-
-                if access_time > order.max_wait_time.total_seconds() / 60:
-                    debug.discarded = True
-                    debug.reasons.append("max_wait_time_exceeded")
-                    debug.metrics["max_wait_time_min"] = order.max_wait_time.total_seconds() / 60
-                    continue
-
-
-            # Ruta: origen → destino pedido
-            path_delivery = astar(
-                graph,
-                order.origin,
-                order.destination,
-                self.heuristic,
-            )
-
-            delivery_route = build_route(path_delivery, graph)
-
-            total_distance = access_distance + delivery_route.distance_km
-
-            estimated_travel_time_min = (
-            access_time + delivery_route.estimated_travel_time_min
-            )
-
-            full_path = (
-                path_to_origin
-                if route_to_origin is None
-                else route_to_origin.path
-            )
-
-            full_path = full_path + delivery_route.path[1:]
-
-
-            debug.metrics.update({
-            "total_distance_km": total_distance,
-            "estimated_travel_time_min": estimated_travel_time_min,
-            })
-
-
-            scoring_input = ScoringInput(
-                total_distance_km=total_distance,
-                total_time_min=estimated_travel_time_min,
-                wait_time_min=access_time,
-                priority=order.priority,
-            )
-
-            score = score_decision(scoring_input)
-            debug.metrics["score"] = score
-
-
-            full_route = Route(
-                origin=vehicle.current_location,
-                destination=order.destination,
-                path=full_path,
-                distance_km=total_distance,
-                estimated_travel_time_min=estimated_travel_time_min,
-                cost=total_distance,
-                metadata={
-                    "vehicle_id": vehicle.id,
-                },
-            )
-
-
-            decision_result = DecisionResult(
-                vehicle=vehicle,
-                route=full_route,
-                score=score,
-                debug=debug,
-            )
-
-            candidates.append((score, decision_result))
+        candidates = self._evaluate_candidates(order, graph, vehicles)
 
         if not candidates:
-            raise ValueError("No suitable vehicle found for order")
+            raise NoVehicleAvailableError(
+                "No suitable vehicle found for the order"
+            )
 
-        return min(candidates, key=lambda c: c[0])[1]
-
+        return min(candidates, key=lambda d: d.score)
 
 
     def preview_order_decision(
         self,
-        order,
-        vehicles,
-        graph,
-    ):
-        results = []
+        order: Order,
+        graph: Graph,
+        vehicles: list[Vehicle] | None = None,
+    ) -> list[DecisionResult]:
+
+        results = self._evaluate_candidates(order, graph, vehicles)
+        return sorted(results, key=lambda d: d.score)
+
+ 
+    def _evaluate_candidates(
+        self,
+        order: Order,
+        graph: Graph,
+        vehicles: list[Vehicle] | None = None,
+    ) -> List[DecisionResult]:
+
+        if vehicles is None:
+            if not self._vehicle_repository:
+                raise ValueError("Vehicle repository not configured")
+            vehicles = self._vehicle_repository.get_available_vehicles()
+
+        results: List[DecisionResult] = []
 
         for vehicle in vehicles:
-            try:
-                decision = self.assign_order(
-                    order=order,
-                    vehicles=[vehicle],  
-                    graph=graph,
-                )
-                results.append(decision)
-            except Exception:
+
+            if not self._is_vehicle_eligible(vehicle, order):
                 continue
 
-        results.sort(key=lambda d: d.score)
+            decision = self._evaluate_vehicle(vehicle, order, graph)
+
+            if decision:
+                results.append(decision)
+
         return results
 
+    def _is_vehicle_eligible(self, vehicle: Vehicle, order: Order) -> bool:
+        return (
+            vehicle.vehicle_type == order.required_vehicle_type
+            and vehicle.capacity_kg >= order.weight_kg
+        )
+
+    def _evaluate_vehicle(
+        self,
+        vehicle: Vehicle,
+        order: Order,
+        graph: Graph,
+    ) -> DecisionResult | None:
+
+        debug = DecisionDebugInfo(
+            vehicle_id=vehicle.id,
+            discarded=False,
+            reasons=[],
+            metrics={},
+        )
 
 
+        access_path = self._calculate_path(
+            graph,
+            vehicle.current_location,
+            order.origin,
+        )
 
+        access_route = (
+            None
+            if len(access_path) < 2
+            else build_route(access_path, graph)
+        )
+
+        access_distance = access_route.distance_km if access_route else 0.0
+        access_time = (
+            access_route.estimated_travel_time_min
+            if access_route else 0.0
+        )
+
+        max_wait_min = order.max_wait_time.total_seconds() / 60
+
+        if access_time > max_wait_min:
+            return None
+
+
+        delivery_path = self._calculate_path(
+            graph,
+            order.origin,
+            order.destination,
+        )
+
+        delivery_route = build_route(delivery_path, graph)
+
+        total_distance = access_distance + delivery_route.distance_km
+        total_time = access_time + delivery_route.estimated_travel_time_min
+
+        scoring_input = ScoringInput(
+            total_distance_km=total_distance,
+            total_time_min=total_time,
+            wait_time_min=access_time,
+            priority=order.priority,
+        )
+
+        score = score_decision(scoring_input)
+
+        full_path = (
+            access_path + delivery_route.path[1:]
+            if access_path
+            else delivery_route.path
+        )
+
+        route = Route(
+            origin=vehicle.current_location,
+            destination=order.destination,
+            path=full_path,
+            distance_km=total_distance,
+            estimated_travel_time_min=total_time,
+            cost=total_distance,
+            metadata={"vehicle_id": vehicle.id},
+        )
+
+        debug.metrics.update({
+            "total_distance_km": total_distance,
+            "total_time_min": total_time,
+            "score": score,
+        })
+
+        return DecisionResult(
+            vehicle=vehicle,
+            route=route,
+            score=score,
+            debug=debug,
+        )
+
+    def _calculate_path(
+        self,
+        graph: Graph,
+        origin: Location,
+        destination: Location,
+    ) -> list[Location]:
+
+        path = astar(
+            graph,
+            origin,
+            destination,
+            self._heuristic,
+        )
+
+        if not path:
+            raise RouteNotFoundError(
+                f"No route found from {origin} to {destination}"
+            )
+
+        return path

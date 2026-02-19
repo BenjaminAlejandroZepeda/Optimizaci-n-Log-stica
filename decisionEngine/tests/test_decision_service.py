@@ -21,7 +21,7 @@ def test_assign_order_selects_best_vehicle():
         id=1,
         weight_kg=5,
         required_vehicle_type=VehicleType.BIKE,
-        max_wait_time=timedelta(minutes=60),  
+        max_wait_time=timedelta(minutes=60),
         priority=Priority.STANDARD,
         origin=b,
         destination=c,
@@ -46,9 +46,9 @@ def test_assign_order_selects_best_vehicle():
     service = DecisionService()
 
     result = service.assign_order(
-        order,
-        [vehicle_near, vehicle_far],
-        graph,
+        order=order,
+        graph=graph,
+        vehicles=[vehicle_near, vehicle_far],  
     )
 
     assert result.vehicle.id == 1

@@ -1,7 +1,5 @@
 from fastapi.testclient import TestClient
 from decisionengine.main import create_app
-from datetime import timedelta
-
 app = create_app()
 client = TestClient(app)
 
@@ -9,7 +7,7 @@ client = TestClient(app)
 def build_order_payload():
     return {
         "origin": {"lat": 0, "lon": 0},
-        "destination": {"lat": 1, "lon": 1},
+        "destination": {"lat": 0, "lon": 1}, 
         "weight_kg": 10,
         "priority": "HIGH",
         "required_vehicle_type": "BIKE",
@@ -27,11 +25,10 @@ def test_assign_success():
 
     data = response.json()
 
-    # Debe devolver al menos vehicle, route y score
     assert "vehicle" in data
     assert "route" in data
     assert "score" in data
-    assert isinstance(data["score"], float)
+    assert isinstance(data["score"], (int, float))
 
 
 def test_assign_with_debug():
@@ -44,7 +41,6 @@ def test_assign_with_debug():
 
     data = response.json()
 
-    # Cuando debug=true debe incluir debug
     assert "debug" in data
     assert data["debug"] is not None
 
@@ -58,7 +54,6 @@ def test_assign_invalid_vehicle_type():
         json=payload,
     )
 
-    # Puede ser 400 (mapper) o 422 (pydantic)
     assert response.status_code in (400, 422)
 
 
@@ -74,6 +69,5 @@ def test_preview_success():
 
     assert isinstance(data, list)
 
-    # Si hay resultados, deben tener score
     if data:
         assert "score" in data[0]

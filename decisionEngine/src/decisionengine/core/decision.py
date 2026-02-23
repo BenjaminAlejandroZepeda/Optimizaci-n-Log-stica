@@ -52,7 +52,6 @@ def build_route(
 
 class DecisionService:
 
-    
     def __init__(
         self,
         vehicle_repository: VehicleRepository | None = None,
@@ -99,7 +98,7 @@ class DecisionService:
         if vehicles is None:
             if not self._vehicle_repository:
                 raise ValueError("Vehicle repository not configured")
-            vehicles = self._vehicle_repository.get_available_vehicles()
+            vehicles = self._vehicle_repository.list_available()
 
         results: List[DecisionResult] = []
 

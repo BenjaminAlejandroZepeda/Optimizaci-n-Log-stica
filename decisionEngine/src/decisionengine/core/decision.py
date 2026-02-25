@@ -74,7 +74,13 @@ class DecisionService:
                 "No suitable vehicle found for the order"
             )
 
-        return min(candidates, key=lambda d: d.score)
+        best = min(candidates, key=lambda d: d.score)
+
+        if self._vehicle_repository is not None:
+            best.vehicle.is_available = False
+            self._vehicle_repository.update(best.vehicle)
+
+        return best
 
 
     def preview_order_decision(

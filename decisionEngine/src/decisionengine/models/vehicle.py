@@ -9,7 +9,6 @@ from decisionengine.models.enums import VehicleType
 @dataclass
 class Vehicle:
 
-
     id: int
 
     # Tipo y capacidad

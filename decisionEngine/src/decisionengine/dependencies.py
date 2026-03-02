@@ -7,6 +7,14 @@ from decisionengine.models.vehicle import Vehicle
 from decisionengine.models.enums import VehicleType
 from decisionengine.core.vehicle_repository import VehicleRepository
 from decisionengine.db.in_memory_vehicle_repository import InMemoryVehicleRepository
+from decisionengine.db.mongo_user_repository import MongoUserRepository
+from decisionengine.config.settings import settings
+
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException, status, Depends
+
+from decisionengine.core.auth_service import AuthService
+from decisionengine.core.user_repository import UserRepository
 
 
 _graph: Graph | None = None
@@ -61,3 +69,37 @@ def get_decision_context(
     vehicle_repository: VehicleRepository = Depends(get_vehicle_repository),
 ):
     return service, graph, vehicle_repository
+
+def get_user_repository():
+    return MongoUserRepository(settings.MONGO_URI)
+
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/login"
+)
+
+def get_auth_service():
+    return AuthService()
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    user_repository: UserRepository = Depends(get_user_repository),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    email = auth_service.decode_token(token)
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+
+    user = user_repository.get_by_email(email)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    return user
+

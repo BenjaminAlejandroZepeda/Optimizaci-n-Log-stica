@@ -22,7 +22,6 @@ def validate_order(
     try:
         domain_order = OrderMapper.from_schema(order)
 
-        # Asumimos validación implícita vía dominio
         service.assign_order(
             order=domain_order,
             vehicles=[],

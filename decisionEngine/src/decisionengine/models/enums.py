@@ -6,9 +6,10 @@ class VehicleType(str, Enum):
     AMBULANCE = "ambulance"
     VAN = "van"
     BIKE = "bike"
+    CAR = "car"
 
 class Priority(str, Enum):
     LOW = "low"
     STANDARD = "standard"
     HIGH = "high"
-    CRITICAL = "critical"
+    URGENT = "critical"

@@ -35,3 +35,10 @@ class Graph:
 
     def cost(self, from_node: Location, to_node: Location) -> float:
         return self._edges[from_node][to_node]
+
+
+    def get_nodes(self) -> List[Location]:
+        return list(self._edges.keys())
+
+    def get_edges(self) -> Dict[Location, Dict[Location, float]]:
+        return self._edges

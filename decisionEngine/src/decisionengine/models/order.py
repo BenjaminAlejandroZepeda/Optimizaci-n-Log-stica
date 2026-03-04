@@ -8,7 +8,7 @@ from decisionengine.models.enums import VehicleType, Priority
 @dataclass
 class Order:
 
-    id: int
+    id: str | None
 
     # Carga
     weight_kg: float

@@ -1,6 +1,5 @@
-
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 
 class ScoringFactorSchema(BaseModel):
@@ -9,3 +8,10 @@ class ScoringFactorSchema(BaseModel):
     weight: float
     contribution: float
     description: Optional[str] = None
+
+
+class ScoringExplainSchema(BaseModel):
+    total_score: float
+    priority_multiplier: float
+    raw_score: float
+    factors: List[ScoringFactorSchema]

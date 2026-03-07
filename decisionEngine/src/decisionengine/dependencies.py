@@ -16,7 +16,7 @@ from decisionengine.config.settings import settings
 from decisionengine.core.auth_service import AuthService
 from decisionengine.core.user_repository import UserRepository
 
-
+from decisionengine.db.MongoOrderRepository import MongoOrderRepository
 _graph: Graph | None = None
 
 
@@ -68,12 +68,14 @@ def get_decision_context(
 
 
 def get_user_repository() -> UserRepository:
-    # Pasa MONGO_URI y MONGO_DB desde settings
     return MongoUserRepository(settings.MONGO_URI, settings.MONGO_DB)
+
+def get_order_repository() -> MongoOrderRepository:
+    return MongoOrderRepository(settings.MONGO_URI)
 
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login"  # coincide con tu ruta de login
+    tokenUrl="/api/v1/auth/login"  
 )
 
 

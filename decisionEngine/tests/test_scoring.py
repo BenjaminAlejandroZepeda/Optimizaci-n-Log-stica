@@ -14,7 +14,7 @@ def test_urgent_priority_scores_better_than_standard():
     )
 
     urgent = score_decision(
-        ScoringInput(priority=Priority.URGENT, **base)
+        ScoringInput(priority=Priority.CRITICAL, **base)
     )
 
     assert urgent < standard

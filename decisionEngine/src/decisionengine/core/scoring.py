@@ -11,7 +11,7 @@ PRIORITY_MULTIPLIER = {
     Priority.LOW: 1.3,
     Priority.STANDARD: 1.0,
     Priority.HIGH: 0.7,
-    Priority.URGENT: 0.4,
+    Priority.CRITICAL: 0.4,
 }
 
 
